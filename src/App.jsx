@@ -31,7 +31,8 @@ const App = () => {
   const [selectedPokemon, setSelectedPokemon] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [offset, setOffset] = useState(0);
-  const limit = 20; // Chargement par lots de 20
+  const [searchResults, setSearchResults] = useState([]);
+  const limit = 20;
 
   useEffect(() => {
     const fetchPokemon = async () => {
@@ -45,7 +46,12 @@ const App = () => {
             axios.get(pokemon.url).then((res) => res.data)
           )
         );
-        setPokemonList((prev) => [...prev, ...detailedPokemon]);
+        setPokemonList((prev) => {
+          const newPokemon = detailedPokemon.filter(
+            (poke) => !prev.some((p) => p.id === poke.id)
+          );
+          return [...prev, ...newPokemon];
+        });
       } catch (error) {
         console.error('Error fetching Pokémon:', error);
       } finally {
@@ -54,13 +60,40 @@ const App = () => {
     };
 
     fetchPokemon();
-  }, [offset]); // Se déclenche à chaque changement d'offset
+  }, [offset]);
 
-  const filteredPokemon = pokemonList.filter(
-    (pokemon) =>
-      pokemon.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      pokemon.id.toString().includes(searchTerm)
-  );
+  useEffect(() => {
+    const searchPokemon = async () => {
+      if (!searchTerm) {
+        setSearchResults([]);
+        return;
+      }
+
+      const localResults = pokemonList.filter((pokemon) =>
+        pokemon.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+
+      if (localResults.length > 0) {
+        setSearchResults(localResults);
+      } else {
+        try {
+          setLoading(true);
+          const response = await axios.get(
+            `https://pokeapi.co/api/v2/pokemon/${searchTerm.toLowerCase()}`
+          );
+          setSearchResults([response.data]);
+        } catch (error) {
+          setSearchResults([]);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    searchPokemon();
+  }, [searchTerm]);
+
+  const displayPokemon = searchTerm ? searchResults : pokemonList;
 
   const loadMore = () => {
     setOffset((prev) => prev + limit);
@@ -80,7 +113,7 @@ const App = () => {
         <SearchBar 
           searchTerm={searchTerm} 
           setSearchTerm={setSearchTerm} 
-          count={filteredPokemon.length} 
+          count={displayPokemon.length} 
         />
 
         {loading && pokemonList.length === 0 ? (
@@ -90,7 +123,7 @@ const App = () => {
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-              {filteredPokemon.map((pokemon) => (
+              {displayPokemon.map((pokemon) => (
                 <PokemonCard
                   key={pokemon.id}
                   pokemon={pokemon}
@@ -100,11 +133,15 @@ const App = () => {
               ))}
             </div>
 
-            {filteredPokemon.length === 0 && (
+            {displayPokemon.length === 0 && (
               <div className="text-center py-12">
                 <i className="fas fa-exclamation-circle text-4xl text-yellow-500 mb-4"></i>
-                <h3 className="text-xl font-semibold text-gray-700">Aucun Pokémon trouvé</h3>
-                <p className="text-gray-500">Essayez un autre terme de recherche</p>
+                <h3 className="text-xl font-semibold text-gray-700">
+                  {searchTerm ? "Aucun Pokémon correspondant" : "Aucun Pokémon chargé"}
+                </h3>
+                <p className="text-gray-500">
+                  {searchTerm ? "Essayez un autre terme de recherche" : "Chargement en cours..."}
+                </p>
               </div>
             )}
 

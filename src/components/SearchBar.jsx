@@ -9,11 +9,22 @@ const SearchBar = ({ searchTerm, setSearchTerm, count }) => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <i className="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+        {searchTerm ? (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="absolute right-10 top-3 text-gray-400 hover:text-gray-600"
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        ) : (
+          <i className="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+        )}
       </div>
-      <div className="text-gray-600">{count} Pokémon trouvés</div>
+      <div className="text-gray-600">
+        {count} Pokémon trouvés
+      </div>
     </div>
-  )
-}
+  );
+};
 
-export default SearchBar
+export default SearchBar;
